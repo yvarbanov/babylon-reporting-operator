@@ -1,3 +1,7 @@
+# Vim temp files
+*.swo
+*.swp
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -127,3 +131,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+.odo/env
+.odo/odo-file-index.json
