@@ -56,8 +56,7 @@ class Provisions(object):
 
         # If provision UUID already exists, we have to return because UUID is primary key
         if self.check_provision_exists() != -1:
-            print("Updating Provision")
-            self.logger.error(f"Provision {self.provision_uuid} already exists. Skipping")
+            self.logger.info(f"Provision {self.provision_uuid} already exists. Skipping")
             return self.provision_uuid
 
         self.logger.info(f"Inserting Provision {self.provision_uuid}")

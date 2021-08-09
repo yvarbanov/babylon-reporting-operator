@@ -30,23 +30,23 @@ core_v1_api = kubernetes.client.CoreV1Api()
 custom_objects_api = kubernetes.client.CustomObjectsApi()
 namespaces = {}
 
-resource_uuid = None
-current_state = None
-desired_state = None
-username = None
 
-
-def handle_no_action(logger, anarchy_subject):
+def handle_no_event(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
     logger.info(f"Ignore action for the state '{current_state}'")
 
 
-def handle_action_provision_pending(logger, anarchy_subject):
+def handle_event_provision_pending(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action provision pending for {resource_uuid}.")
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_provisioning(logger, anarchy_subject):
+def handle_event_provisioning(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action provisioning for {resource_uuid}.")
 
     provision = prepare(anarchy_subject, logger)
@@ -63,166 +63,209 @@ def handle_action_provisioning(logger, anarchy_subject):
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_provision_failed(logger, anarchy_subject):
+def handle_event_provision_failed(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action provision failed for {resource_uuid}.")
 
     last_action = utils.last_lifecycle(resource_uuid)
 
     # Update provision_results if the last action was provision
     if last_action.startswith('provision'):
-        logger.info("Last action was provision, needs to update provision_results")
-        query = f"UPDATE provisions SET provision_results = 'failure' WHERE uuid = '{resource_uuid}' RETURNING uuid;"
-
-        utils.execute_query(query, autocommit=True)
+        logger.info("Last action was provision, updating provision_result")
+        utils.update_provision_result(resource_uuid, 'failure')
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_provision_complete(logger, anarchy_subject):
+def handle_event_provision_complete(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action provision complete for {resource_uuid}.")
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_started(logger, anarchy_subject):
+def handle_event_started(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action started for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
     if provision_exists == -1:
-        handle_action_provisioning(logger, anarchy_subject)
+        handle_event_provisioning(logger, anarchy_subject)
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_start_pending(logger, anarchy_subject):
+def handle_event_start_pending(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action start pending for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
     if provision_exists == -1:
-        handle_action_provisioning(logger, anarchy_subject)
+        handle_event_provisioning(logger, anarchy_subject)
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_starting(logger, anarchy_subject):
+def handle_event_starting(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action starting for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
     if provision_exists == -1:
-        handle_action_provisioning(logger, anarchy_subject)
+        handle_event_provisioning(logger, anarchy_subject)
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_start_failed(logger, anarchy_subject):
+def handle_event_start_failed(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action start failed for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
     if provision_exists == -1:
-        handle_action_provisioning(logger, anarchy_subject)
+        handle_event_provisioning(logger, anarchy_subject)
 
     last_action = utils.last_lifecycle(resource_uuid)
 
     # if last action was provision we have to update provision_results
     if last_action.startswith('provision'):
         logger.info("Last action was provision, needs to update provision_results")
-        query = f"UPDATE provisions SET provision_results = 'failure' WHERE uuid = '{resource_uuid}' RETURNING uuid;"
-        utils.execute_query(query, autocommit=True)
+        utils.update_provision_result(resource_uuid, 'failure')
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_stop_pending(logger, anarchy_subject):
+def handle_event_stop_pending(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action stop pending for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
     if provision_exists == -1:
-        handle_action_provisioning(logger, anarchy_subject)
+        handle_event_provisioning(logger, anarchy_subject)
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_stopping(logger, anarchy_subject):
+def handle_event_stopping(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action stopping for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
     if provision_exists == -1:
-        handle_action_provisioning(logger, anarchy_subject)
+        handle_event_provisioning(logger, anarchy_subject)
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_stop_failed(logger, anarchy_subject):
+def handle_event_stop_failed(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action stop failed for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
     if provision_exists == -1:
-        handle_action_provisioning(logger, anarchy_subject)
+        handle_event_provisioning(logger, anarchy_subject)
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_stopped(logger, anarchy_subject):
+def handle_event_stopped(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action stopped for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
     if provision_exists == -1:
-        handle_action_provisioning(logger, anarchy_subject)
+        handle_event_provisioning(logger, anarchy_subject)
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_destroying(logger, anarchy_subject):
+def handle_event_destroying(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action destroying for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
     if provision_exists == -1:
-        handle_action_provisioning(logger, anarchy_subject)
+        handle_event_provisioning(logger, anarchy_subject)
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
-def handle_action_destroy_failed(logger, anarchy_subject):
+def handle_event_destroy_failed(logger, anarchy_subject):
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
+
     logger.info(f"Handle action destroy failed for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
     if provision_exists == -1:
-        handle_action_provisioning(logger, anarchy_subject)
+        handle_event_provisioning(logger, anarchy_subject)
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
 resource_states = {
-    'None': handle_no_action,
-    'new': handle_no_action,
-    'provision-pending': handle_action_provision_pending,
-    'provisioning': handle_action_provisioning,
-    'provision-failed': handle_action_provision_failed,
-    'started': handle_action_started,
-    'start-pending': handle_action_start_pending,
-    'starting': handle_action_starting,
-    'start-failed': handle_action_start_failed,
-    'stop-pending': handle_action_stop_pending,
-    'stopping': handle_action_stopping,
-    'stop-failed': handle_action_stop_failed,
-    'stopped': handle_action_stopped,
-    'destroying': handle_action_destroying,
-    'destroy-failed': handle_action_destroy_failed
+    'None': handle_no_event,
+    'new': handle_no_event,
+    'provision-pending': handle_event_provision_pending,
+    'provisioning': handle_event_provisioning,
+    'provision-failed': handle_event_provision_failed,
+    'started': handle_event_started,
+    'start-pending': handle_event_start_pending,
+    'starting': handle_event_starting,
+    'start-failed': handle_event_start_failed,
+    'stop-pending': handle_event_stop_pending,
+    'stopping': handle_event_stopping,
+    'stop-failed': handle_event_stop_failed,
+    'stopped': handle_event_stopped,
+    'destroying': handle_event_destroying,
+    'destroy-failed': handle_event_destroy_failed
 }
+
+
+def get_resource_vars(anarchy_subject):
+    anarchy_subject_spec = anarchy_subject['spec']
+    anarchy_subject_spec_vars = anarchy_subject_spec['vars']
+    anarchy_subject_job_vars = anarchy_subject_spec_vars.get('job_vars', {})
+    anarchy_subject_metadata = anarchy_subject['metadata']
+    anarchy_subject_annotations = anarchy_subject_metadata['annotations']
+
+    current_state = anarchy_subject_spec_vars.get('current_state')
+    resource_uuid = anarchy_subject_job_vars.get('uuid',
+                                                 anarchy_subject_annotations.get(
+                                                     f"{poolboy_domain}/resource-handle-uid")
+                                                 )
+
+    # TODO: Try to get username from resource_claim
+    username = anarchy_subject_annotations.get(
+        f"{poolboy_domain}/resource-requester-preferred-username")
+
+    desired_state = anarchy_subject_spec_vars.get('desired_state')
+
+    return current_state, desired_state, resource_uuid, username
 
 
 @kopf.on.startup()
 def configure(settings: kopf.OperatorSettings, **_):
-    global ansible_tower_hostname, ansible_tower_password, ansible_tower_user
+    global ansible_tower_hostname, ansible_tower_password, ansible_tower_user, db_connection
 
     # Disable scanning for CustomResourceDefinitions
     settings.scanning.disabled = True
@@ -233,6 +276,10 @@ def configure(settings: kopf.OperatorSettings, **_):
     ansible_tower_hostname = b64decode(ansible_tower_secret.data['hostname']).decode('utf8')
     ansible_tower_password = b64decode(ansible_tower_secret.data['password']).decode('utf8')
     ansible_tower_user = b64decode(ansible_tower_secret.data['user']).decode('utf8')
+
+    # Get db connection using pool
+    db_connection = utils.connect_to_db()
+
 
 @kopf.on.event(
     'namespaces',
@@ -253,7 +300,6 @@ def namespace_event(event, logger, **_):
     anarchy_domain, anarchy_api_version, 'anarchysubjects',
 )
 def anarchysubject_event(event, logger, **_):
-    global resource_uuid, current_state, username
     anarchy_subject = event.get('object')
 
     # Only respond to events that include AnarchySubject data.
@@ -268,14 +314,7 @@ def anarchysubject_event(event, logger, **_):
     anarchy_subject_metadata = anarchy_subject['metadata']
     anarchy_subject_annotations = anarchy_subject_metadata['annotations']
 
-    current_state = anarchy_subject_spec_vars.get('current_state')
-    resource_uuid = anarchy_subject_job_vars.get('uuid',
-                                                 anarchy_subject_annotations.get(
-                                                     f"{poolboy_domain}/resource-handle-uid")
-                                                 )
-    # TODO: Try to get username from resource_claim
-    username = anarchy_subject_annotations.get(
-        f"{poolboy_domain}/resource-requester-preferred-username")
+    current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
     logger.info(f"Current State: {current_state} for provision uuid {resource_uuid}")
     if current_state in resource_states:
@@ -423,7 +462,7 @@ def prepare(anarchy_subject, logger):
         'cloud_region': provision_job_vars.get('region', anarchy_subject_job_vars.get('region')),
         'cloud': provision_job_vars.get('cloud_provider', 'test'),
         'env_type': provision_job_vars.get('env_type', 'tests'),
-        'platform': provision_job_vars.get('platform', 'tests'),
+        'datasource': provision_job_vars.get('platform', 'tests'),
         'environment': class_list[2],
         'account': class_list[0],
         'class_name': class_name,

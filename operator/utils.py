@@ -4,14 +4,15 @@ import json
 import psycopg2
 from psycopg2.extras import DictCursor
 from psycopg2 import ProgrammingError as Psycopg2ProgrammingError
+from psycopg2 import pool
 import decimal
 from datetime import datetime, timedelta
 import re
 import pytz
 from retrying import retry
 
-global logger
 
+global db_connection
 
 def list_to_pg_array(elem):
     """Convert the passed list to PostgreSQL array
@@ -79,19 +80,27 @@ def get_conn_params(secret_name='gpte-db-secrets'):
 
 
 def execute_query(query, positional_args=None, autocommit=False):
+    global db_connection
     query_list = []
     if positional_args:
         positional_args = convert_elements_to_pg_arrays(positional_args)
 
     query_list.append(query)
 
-    conn_params = get_conn_params()
-    db_connection = connect_to_db(conn_params, autocommit=autocommit)
+    if not db_connection:
+        connect_to_db()
+
+    try:
+        db_pool_conn = db_connection.getconn()
+    except psycopg2.InterfaceError:
+        connect_to_db()
+        db_pool_conn = db_connection.getconn()
 
     encoding = 'utf-8'
     if encoding is not None:
-        db_connection.set_client_encoding(encoding)
-    cursor = db_connection.cursor(cursor_factory=DictCursor)
+        db_pool_conn.set_client_encoding(encoding)
+
+    cursor = db_pool_conn.cursor(cursor_factory=DictCursor)
 
     # Prepare args:
     if positional_args:
@@ -159,10 +168,10 @@ def execute_query(query, positional_args=None, autocommit=False):
 
         except Exception as e:
             if not autocommit:
-                db_connection.rollback()
+                db_pool_conn.rollback()
 
             cursor.close()
-            db_connection.close()
+            db_connection.putconn(db_pool_conn)
             print("Cannot execute SQL \n"
                   "Query: '%s' \n"
                   "Arguments: %s: \n"
@@ -170,8 +179,8 @@ def execute_query(query, positional_args=None, autocommit=False):
                   "query list: %s\n"
                   "" % (query, arguments, e, query_list))
 
-    if not autocommit:
-        db_connection.commit()
+    if autocommit:
+        db_pool_conn.commit()
 
     kw = dict(
         changed=changed,
@@ -184,26 +193,22 @@ def execute_query(query, positional_args=None, autocommit=False):
     )
 
     cursor.close()
-    db_connection.close()
+    db_connection.putconn(db_pool_conn)
     return kw
 
 
 # Wait 2^x * 500 milliseconds between each retry, up to 5 seconds, then 5 seconds afterwards and 3 attempts
 @retry(stop_max_attempt_number=3, wait_exponential_multiplier=500, wait_exponential_max=5000)
-def connect_to_db(conn_params, autocommit=False, fail_on_conn=True):
-    """Connect to a PostgreSQL database.
-    Return psycopg2 connection object.
-    Args:
-        conn_params (dict) -- dictionary with connection parameters
-    Kwargs:
-        autocommit (bool) -- commit automatically (default False)
-        fail_on_conn (bool) -- fail if connection failed or just warn and return None (default True)
-    """
+def connect_to_db(fail_on_conn=True):
+    global db_connection
 
-    db_connection = None
+    conn_params = get_conn_params()
+
     try:
-        db_connection = psycopg2.connect(**conn_params)
-        db_connection.set_session(autocommit=autocommit)
+        db_connection = pool.ThreadedConnectionPool(2, 30, **conn_params)
+        if db_connection:
+            print("Connection pool created successfully using ThreadedConnectionPool")
+
     except TypeError as e:
         if 'sslrootcert' in e.args[0]:
             print('Postgresql server must be at least '
@@ -219,8 +224,6 @@ def connect_to_db(conn_params, autocommit=False, fail_on_conn=True):
         else:
             print("PostgreSQL server is unavailable: %s" % e)
             db_connection = None
-
-    return db_connection
 
 
 def parse_null_value(value):
@@ -297,36 +300,47 @@ def check_exists(table_name, identifier, column='id'):
 
 
 def last_lifecycle(provision_uuid):
-    query = f"SELECT MAX(logged_at), operation \n" \
+    query = f"SELECT MAX(logged_at), state \n" \
             f"FROM lifecycle_log ll \n" \
             f"WHERE provision_uuid = '{provision_uuid}' \n" \
-            f"GROUP BY operation \n" \
+            f"GROUP BY state \n" \
             f"ORDER BY 1 DESC \n" \
             f"LIMIT 1;"
+
     result = execute_query(query)
 
     if result['rowcount'] >= 1:
         query_result = result['query_result'][0]
-        return query_result.get('operation')
+        return query_result.get('state')
     else:
         return None
 
 
 def provision_lifecycle(provision_uuid, current_state, username):
-    last_operation = last_lifecycle(provision_uuid)
-    if last_operation == current_state:
+    last_state = last_lifecycle(provision_uuid)
+
+    if last_state == current_state:
         return
 
-    query_result = None
-    query = f"INSERT INTO lifecycle_log (provision_uuid, logged_at, operation, executor) \n" \
-            f"VALUES ( '{provision_uuid}', timezone('utc', NOW()), '{current_state}', '{username}') RETURNING id;"
+    positional_args = [
+        provision_uuid,
+        current_state,
+        username
+    ]
 
-    cur = execute_query(query, autocommit=True)
+    query = f"INSERT INTO lifecycle_log (provision_uuid, state, executor) \n" \
+            f"VALUES ( %s, %s, %s) RETURNING id;"
 
-    # if cur['rowcount'] >= 1:
-    #     query_result = cur['query_result'][0]
-    #
-    # return query_result
+    cur = execute_query(query, autocommit=True, positional_args=positional_args)
+
+
+def update_provision_result(provision_uuid, result='success'):
+    positional_args = [result, provision_uuid]
+    query = f"UPDATE provisions SET provision_result = %s WHERE uuid = %s RETURNING uuid;"
+
+    execute_query(query, autocommit=True, positional_args=positional_args)
+
+
 
 
 def check_provision_exists(provision_uuid):
@@ -352,3 +366,4 @@ def timestamp_to_utc(timestamp_received):
     dt_naive_utc = datetime.utcfromtimestamp(timestamp_received_dt)
 
     return dt_naive_utc.replace(tzinfo=pytz.utc).strftime('%FT%T+00:00')
+
