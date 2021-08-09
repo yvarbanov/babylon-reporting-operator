@@ -10,7 +10,7 @@ parameters:
 - name: NAME
   value: babylon-reporting-operator
 - name: GIT_REPO
-  value: https://github.com/redhat-cop/babylon.git
+  value: https://github.com/redhat-gpte/babylon-reporting-operator.git
 - name: GIT_REF
   value: main
 - name: KOPF_S2I_IMAGE
