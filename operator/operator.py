@@ -96,6 +96,10 @@ def handle_event_started(logger, anarchy_subject):
     if provision_exists == -1:
         handle_event_provisioning(logger, anarchy_subject)
 
+    last_state = utils.last_lifecycle(resource_uuid)
+    if last_state == 'provisioning':
+        utils.provision_lifecycle(resource_uuid, 'provision-completed', username)
+
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
 
@@ -133,6 +137,10 @@ def handle_event_start_failed(logger, anarchy_subject):
 
     if provision_exists == -1:
         handle_event_provisioning(logger, anarchy_subject)
+
+    last_state = utils.last_lifecycle(resource_uuid)
+    if last_state == 'provisioning':
+        utils.provision_lifecycle(resource_uuid, 'provision-failed', username)
 
     last_action = utils.last_lifecycle(resource_uuid)
 
