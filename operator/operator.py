@@ -39,7 +39,7 @@ def handle_no_event(logger, anarchy_subject):
 def handle_event_provision_pending(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action provision pending for {resource_uuid}.")
+    logger.info(f"Handle event provision pending for {resource_uuid}.")
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
@@ -47,7 +47,7 @@ def handle_event_provision_pending(logger, anarchy_subject):
 def handle_event_provisioning(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action provisioning for {resource_uuid}.")
+    logger.info(f"Handle event provisioning for {resource_uuid}.")
 
     provision = prepare(anarchy_subject, logger)
 
@@ -66,7 +66,7 @@ def handle_event_provisioning(logger, anarchy_subject):
 def handle_event_provision_failed(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action provision failed for {resource_uuid}.")
+    logger.info(f"Handle event provision failed for {resource_uuid}.")
 
     last_action = utils.last_lifecycle(resource_uuid)
 
@@ -81,7 +81,7 @@ def handle_event_provision_failed(logger, anarchy_subject):
 def handle_event_provision_complete(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action provision complete for {resource_uuid}.")
+    logger.info(f"Handle event provision complete for {resource_uuid}.")
 
     utils.provision_lifecycle(resource_uuid, current_state, username)
 
@@ -89,7 +89,7 @@ def handle_event_provision_complete(logger, anarchy_subject):
 def handle_event_started(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action started for {resource_uuid}.")
+    logger.info(f"Handle event started for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
@@ -102,7 +102,7 @@ def handle_event_started(logger, anarchy_subject):
 def handle_event_start_pending(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action start pending for {resource_uuid}.")
+    logger.info(f"Handle event start pending for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
@@ -115,7 +115,7 @@ def handle_event_start_pending(logger, anarchy_subject):
 def handle_event_starting(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action starting for {resource_uuid}.")
+    logger.info(f"Handle event starting for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
     if provision_exists == -1:
@@ -127,7 +127,7 @@ def handle_event_starting(logger, anarchy_subject):
 def handle_event_start_failed(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action start failed for {resource_uuid}.")
+    logger.info(f"Handle event start failed for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
@@ -147,7 +147,7 @@ def handle_event_start_failed(logger, anarchy_subject):
 def handle_event_stop_pending(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action stop pending for {resource_uuid}.")
+    logger.info(f"Handle event stop pending for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
@@ -160,7 +160,7 @@ def handle_event_stop_pending(logger, anarchy_subject):
 def handle_event_stopping(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action stopping for {resource_uuid}.")
+    logger.info(f"Handle event stopping for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
@@ -173,7 +173,7 @@ def handle_event_stopping(logger, anarchy_subject):
 def handle_event_stop_failed(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action stop failed for {resource_uuid}.")
+    logger.info(f"Handle event stop failed for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
@@ -186,7 +186,7 @@ def handle_event_stop_failed(logger, anarchy_subject):
 def handle_event_stopped(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action stopped for {resource_uuid}.")
+    logger.info(f"Handle event stopped for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
@@ -199,7 +199,7 @@ def handle_event_stopped(logger, anarchy_subject):
 def handle_event_destroying(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action destroying for {resource_uuid}.")
+    logger.info(f"Handle event destroying for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
@@ -212,7 +212,7 @@ def handle_event_destroying(logger, anarchy_subject):
 def handle_event_destroy_failed(logger, anarchy_subject):
     current_state, desired_state, resource_uuid, username = get_resource_vars(anarchy_subject)
 
-    logger.info(f"Handle action destroy failed for {resource_uuid}.")
+    logger.info(f"Handle event destroy failed for {resource_uuid}.")
 
     provision_exists = utils.check_provision_exists(resource_uuid)
 
