@@ -5,7 +5,7 @@ from datetime import datetime
 class Provisions(object):
 
     def __init__(self, logger, prov_data):
-        self.debug = True
+        self.debug = False
         self.logger = logger
         self.prov_data = prov_data
         self.user_data = self.prov_data.get('user')
