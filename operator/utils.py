@@ -90,11 +90,15 @@ def execute_query(query, positional_args=None, autocommit=False):
     if not db_connection:
         connect_to_db()
 
+    # This is a workaround to reconnect to database
+    db_pool_conn = db_connection.getconn()
     try:
-        db_pool_conn = db_connection.getconn()
+        db_pool_conn.close()
+        db_connection.putconn(db_pool_conn)
     except psycopg2.InterfaceError:
-        connect_to_db()
-        db_pool_conn = db_connection.getconn()
+        pass
+
+    db_pool_conn = db_connection.getconn()
 
     encoding = 'utf-8'
     if encoding is not None:
@@ -166,6 +170,7 @@ def execute_query(query, positional_args=None, autocommit=False):
                 else:
                     changed = True
 
+
         except Exception as e:
             if not autocommit:
                 db_pool_conn.rollback()
@@ -205,7 +210,8 @@ def connect_to_db(fail_on_conn=True):
     conn_params = get_conn_params()
 
     try:
-        db_connection = pool.ThreadedConnectionPool(2, 30, **conn_params)
+        # TODO: Create parameter to max_connection and min_connection
+        db_connection = pool.ThreadedConnectionPool(2, 100, **conn_params)
         if db_connection:
             print("Connection pool created successfully using ThreadedConnectionPool")
 
