@@ -60,7 +60,6 @@ class Provisions(object):
             return self.provision_uuid
 
         self.logger.info(f"Inserting Provision {self.provision_uuid}")
-        print(f"Inserting Provision {self.provision_uuid}")
 
         catalog_id = self.prov_data.get('catalog_id', -1)
         if catalog_id == -1:
@@ -68,7 +67,6 @@ class Provisions(object):
             return False
 
         self.logger.info(f"Catalog ID: {catalog_id}")
-        print(f"Catalog ID: {catalog_id}")
 
         # TODO: Update purpose
         purpose_id = 4
@@ -78,12 +76,6 @@ class Provisions(object):
         user_manager_id = user_db_info.get('manager_id')
         user_manager_chargeback_id  = user_db_info.get('manager_chargeback_id')
         user_cost_center = user_db_info.get('cost_center')
-
-        print(f"User Information: \n"
-              f"user_db_id: {user_db_id}\n"
-              f"user_manager_id: {user_manager_id}\n"
-              f"user_manager_chargeback_id: {user_manager_chargeback_id}\n"
-              f"user_cost_center: {user_cost_center}")
 
         current_state = self.prov_data.get('current_state')
         provision_results = 'success'
